@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的 AI 助理</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --surface3: #2e2e2e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0ede8;
+    --text2: #9a9590;
+    --text3: #5a5550;
+    --accent: #c9a96e;
+    --accent2: #e8c896;
+    --red: #e07060;
+    --green: #6eb88a;
+    --blue: #6899c8;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    flex-shrink: 0;
+  }
+  .logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: all 0.2s;
+    font-size: 13px;
+    color: var(--text2);
+    position: relative;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-item.active {
+    color: var(--accent);
+    background: rgba(201,169,110,0.08);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent);
+  }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-section {
+    font-size: 10px;
+    color: var(--text3);
+    padding: 16px 20px 6px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* Main */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .topbar {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+  .page-title { font-size: 15px; font-weight: 500; }
+  .page-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .api-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Content area */
+  .content { flex: 1; overflow-y: auto; padding: 28px; display: none; }
+  .content.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 14px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Form elements */
+  select, input[type="text"], input[type="file"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: 'Noto Sans SC', sans-serif;
+    outline: none;
+    transition: border 0.2s;
+    margin-bottom: 12px;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  select option { background: #1a1a1a; }
+  textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 13px;
+    font-family: 'Noto Sans SC', sans-serif;
+    outline: none;
+    resize: vertical;
+    line-height: 1.7;
+    transition: border 0.2s;
+    min-height: 120px;
+    margin-bottom: 12px;
+  }
+  textarea:focus { border-color: var(--accent); }
+  label {
+    font-size: 12px;
+    color: var(--text2);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* Buttons */
+  .btn {
+    background: var(--accent);
+    color: #1a1208;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+  /* Result box */
+  .result-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.8;
+    min-height: 100px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: none;
+    position: relative;
+  }
+  .result-box.visible { display: block; }
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .result-label { font-size: 11px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  .copy-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* Loading */
+  .loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: var(--text2);
+    font-size: 13px;
+    margin: 12px 0;
+  }
+  .loading.visible { display: flex; }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Row layout */
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    color: var(--text2);
+    transition: all 0.2s;
+  }
+  .chip:hover, .chip.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(201,169,110,0.08);
+  }
+
+  /* Home dashboard */
+  .hero {
+    text-align: center;
+    padding: 40px 20px 32px;
+  }
+  .hero-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 10px;
+    letter-spacing: 4px;
+  }
+  .hero-sub { font-size: 14px; color: var(--text2); line-height: 1.8; }
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .tool-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-align: left;
+  }
+  .tool-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    background: rgba(201,169,110,0.05);
+  }
+  .tool-emoji { font-size: 24px; margin-bottom: 10px; }
+  .tool-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .tool-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+  /* API key setup */
+  .setup-banner {
+    background: rgba(201,169,110,0.08);
+    border: 1px solid rgba(201,169,110,0.25);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .setup-text { font-size: 13px; color: var(--accent2); }
+  .setup-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .api-input-row { display: flex; gap: 8px; align-items: flex-start; }
+  .api-input-row input { margin-bottom: 0; flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-title">我的助理</div>
+      <div class="logo-sub">AI · 工作 · 生活</div>
+    </div>
+    <div class="nav-section">工具</div>
+    <div class="nav-item active" onclick="switchPage('home')">
+      <span class="nav-icon">⌂</span> 首页
+    </div>
+    <div class="nav-item" onclick="switchPage('xiaohongshu')">
+      <span class="nav-icon">✿</span> 小红书文案
+    </div>
+    <div class="nav-item" onclick="switchPage('wechat')">
+      <span class="nav-icon">✉</span> 公众号文章
+    </div>
+    <div class="nav-item" onclick="switchPage('search')">
+      <span class="nav-icon">◎</span> 信息搜索摘要
+    </div>
+    <div class="nav-item" onclick="switchPage('doc')">
+      <span class="nav-icon">◻</span> 文件处理
+    </div>
+    <div class="nav-item" onclick="switchPage('code')">
+      <span class="nav-icon">⟨/⟩</span> 网页代码助手
+    </div>
+    <div class="nav-section" style="margin-top: auto;">设置</div>
+    <div class="nav-item" onclick="switchPage('settings')">
+      <span class="nav-icon">⚙</span> API 设置
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="topbar-title">首页</div>
+        <div class="page-desc" id="topbar-desc">选择一个工具开始</div>
+      </div>
+      <div class="api-status">
+        <div class="status-dot" id="status-dot" style="background: var(--text3)"></div>
+        <span id="status-text">未配置 API Key</span>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div class="content active" id="page-home">
+      <div class="hero">
+        <div class="hero-title">你好，今天要做什么？</div>
+        <div class="hero-sub">你的专属 AI 助理，帮你写文案、处理文件、搜索信息、写代码</div>
+      </div>
+      <div class="tools-grid">
+        <div class="tool-card" onclick="switchPage('xiaohongshu')">
+          <div class="tool-emoji">📱</div>
+          <div class="tool-name">小红书文案</div>
+          <div class="tool-desc">生成吸引眼球的笔记，带话题标签，多种风格可选</div>
+        </div>
+        <div class="tool-card" onclick="switchPage('wechat')">
+          <div class="tool-emoji">📰</div>
+          <div class="tool-name">公众号文章</div>
+          <div class="tool-desc">写有深度的长篇文章，结构清晰，排版专业</div>
+        </div>
+        <div class="tool-card" onclick="switchPage('search')">
+          <div class="tool-emoji">🔍</div>
+          <div class="tool-name">信息搜索摘要</div>
+          <div class="tool-desc">输入主题，快速生成专业摘要与要点总结</div>
+        </div>
+        <div class="tool-card" onclick="switchPage('doc')">
+          <div class="tool-emoji">📄</div>
+          <div class="tool-name">文件处理</div>
+          <div class="tool-desc">粘贴文本，提取摘要、翻译、润色或转换格式</div>
+        </div>
+        <div class="tool-card" onclick="switchPage('code')">
+          <div class="tool-emoji">💻</div>
+          <div class="tool-name">网页代码助手</div>
+          <div class="tool-desc">描述你想要的网页效果，自动生成 HTML/CSS 代码</div>
+        </div>
+        <div class="tool-card" onclick="switchPage('settings')">
+          <div class="tool-emoji">🔑</div>
+          <div class="tool-name">配置 API Key</div>
+          <div class="tool-desc">输入 Anthropic API Key 后即可使用所有功能</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XIAOHONGSHU -->
+    <div class="content" id="page-xiaohongshu">
+      <div id="banner-xhs" class="setup-banner" style="display:none">
+        <div>
+          <div class="setup-text">⚠️ 请先配置 API Key</div>
+          <div class="setup-sub">前往「API 设置」页面输入你的 Anthropic API Key</div>
+        </div>
+        <button class="btn btn-ghost" onclick="switchPage('settings')">去设置</button>
+      </div>
+      <div class="card">
+        <div class="card-title">内容主题</div>
+        <label>主题 / 关键词</label>
+        <textarea id="xhs-topic" placeholder="例如：我最近去了云南旅行，住了一家超美的民宿，想分享给大家..." rows="3"></textarea>
+        <label>风格选择</label>
+        <div class="chip-group" id="xhs-style-chips">
+          <div class="chip selected" onclick="selectChip(this,'xhs-style')">种草安利</div>
+          <div class="chip" onclick="selectChip(this,'xhs-style')">情感共鸣</div>
+          <div class="chip" onclick="selectChip(this,'xhs-style')">干货教程</div>
+          <div class="chip" onclick="selectChip(this,'xhs-style')">日常碎碎念</div>
+          <div class="chip" onclick="selectChip(this,'xhs-style')">高颜值美学</div>
+        </div>
+        <label>目标受众</label>
+        <div class="chip-group" id="xhs-audience-chips">
+          <div class="chip selected" onclick="selectChip(this,'xhs-audience')">18-25岁</div>
+          <div class="chip" onclick="selectChip(this,'xhs-audience')">25-35岁</div>
+          <div class="chip" onclick="selectChip(this,'xhs-audience')">宝妈群体</div>
+          <div class="chip" onclick="selectChip(this,'xhs-audience')">职场白领</div>
+        </div>
+        <button class="btn" onclick="generateXHS()">✦ 生成小红书文案</button>
+      </div>
+      <div class="loading" id="xhs-loading"><div class="spinner"></div>正在生成中，请稍候...</div>
+      <div class="card" id="xhs-result-card" style="display:none">
+        <div class="result-header">
+          <div class="result-label">生成结果</div>
+          <button class="btn btn-ghost copy-btn" onclick="copyResult('xhs-result')">复制</button>
+        </div>
+        <div class="result-box visible" id="xhs-result"></div>
+      </div>
+    </div>
+
+    <!-- WECHAT -->
+    <div class="content" id="page-wechat">
+      <div class="card">
+        <div class="card-title">文章信息</div>
+        <label>文章主题</label>
+        <input type="text" id="wechat-topic" placeholder="例如：2025年最值得学习的 AI 工具盘点">
+        <label>文章风格</label>
+        <div class="chip-group" id="wechat-style-chips">
+          <div class="chip selected" onclick="selectChip(this,'wechat-style')">专业严肃</div>
+          <div class="chip" onclick="selectChip(this,'wechat-style')">轻松幽默</div>
+          <div class="chip" onclick="selectChip(this,'wechat-style')">深度分析</div>
+          <div class="chip" onclick="selectChip(this,'wechat-style')">故事化叙述</div>
+        </div>
+        <label>字数要求</label>
+        <div class="chip-group" id="wechat-length-chips">
+          <div class="chip selected" onclick="selectChip(this,'wechat-length')">800字（短篇）</div>
+          <div class="chip" onclick="selectChip(this,'wechat-length')">1500字（中篇）</div>
+          <div class="chip" onclick="selectChip(this,'wechat-length')">2500字（深度）</div>
+        </div>
+        <label>补充说明（可选）</label>
+        <textarea id="wechat-extra" placeholder="例如：需要包含案例、结尾呼吁关注..." rows="2"></textarea>
+        <button class="btn" onclick="generateWechat()">✦ 生成公众号文章</button>
+      </div>
+      <div class="loading" id="wechat-loading"><div class="spinner"></div>正在撰写文章，请稍候...</div>
+      <div class="card" id="wechat-result-card" style="display:none">
+        <div class="result-header">
+          <div class="result-label">生成结果</div>
+          <button class="btn btn-ghost copy-btn" onclick="copyResult('wechat-result')">复制</button>
+        </div>
+        <div class="result-box visible" id="wechat-result"></div>
+      </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="content" id="page-search">
+      <div class="card">
+        <div class="card-title">信息查询</div>
+        <label>查询主题</label>
+        <input type="text" id="search-topic" placeholder="例如：2025年人工智能行业发展趋势">
+        <label>输出形式</label>
+        <div class="chip-group" id="search-type-chips">
+          <div class="chip selected" onclick="selectChip(this,'search-type')">要点摘要</div>
+          <div class="chip" onclick="selectChip(this,'search-type')">详细分析</div>
+          <div class="chip" onclick="selectChip(this,'search-type')">问答形式</div>
+          <div class="chip" onclick="selectChip(this,'search-type')">对比分析</div>
+        </div>
+        <button class="btn" onclick="generateSearch()">✦ 开始查询摘要</button>
+      </div>
+      <div class="loading" id="search-loading"><div class="spinner"></div>正在分析整理，请稍候...</div>
+      <div class="card" id="search-result-card" style="display:none">
+        <div class="result-header">
+          <div class="result-label">摘要结果</div>
+          <button class="btn btn-ghost copy-btn" onclick="copyResult('search-result')">复制</button>
+        </div>
+        <div class="result-box visible" id="search-result"></div>
+      </div>
+    </div>
+
+    <!-- DOC -->
+    <div class="content" id="page-doc">
+      <div class="card">
+        <div class="card-title">文本处理</div>
+        <label>粘贴你的文字内容</label>
+        <textarea id="doc-text" placeholder="将需要处理的文字粘贴到这里..." rows="6"></textarea>
+        <label>处理方式</label>
+        <div class="chip-group" id="doc-type-chips">
+          <div class="chip selected" onclick="selectChip(this,'doc-type')">摘要总结</div>
+          <div class="chip" onclick="selectChip(this,'doc-type')">润色改写</div>
+          <div class="chip" onclick="selectChip(this,'doc-type')">中英翻译</div>
+          <div class="chip" onclick="selectChip(this,'doc-type')">英中翻译</div>
+          <div class="chip" onclick="selectChip(this,'doc-type')">提取关键信息</div>
+          <div class="chip" onclick="selectChip(this,'doc-type')">转为正式文体</div>
+        </div>
+        <button class="btn" onclick="generateDoc()">✦ 开始处理</button>
+      </div>
+      <div class="loading" id="doc-loading"><div class="spinner"></div>正在处理中...</div>
+      <div class="card" id="doc-result-card" style="display:none">
+        <div class="result-header">
+          <div class="result-label">处理结果</div>
+          <button class="btn btn-ghost copy-btn" onclick="copyResult('doc-result')">复制</button>
+        </div>
+        <div class="result-box visible" id="doc-result"></div>
+      </div>
+    </div>
+
+    <!-- CODE -->
+    <div class="content" id="page-code">
+      <div class="card">
+        <div class="card-title">网页代码生成</div>
+        <label>描述你想要的网页或组件</label>
+        <textarea id="code-desc" placeholder="例如：一个产品展示页，顶部大图，中间三列特性介绍，底部联系表单，配色清新简洁..." rows="4"></textarea>
+        <label>技术要求</label>
+        <div class="chip-group" id="code-type-chips">
+          <div class="chip selected" onclick="selectChip(this,'code-type')">纯 HTML+CSS</div>
+          <div class="chip" onclick="selectChip(this,'code-type')">加入 JS 交互</div>
+          <div class="chip" onclick="selectChip(this,'code-type')">响应式设计</div>
+          <div class="chip" onclick="selectChip(this,'code-type')">暗色主题</div>
+        </div>
+        <button class="btn" onclick="generateCode()">✦ 生成网页代码</button>
+      </div>
+      <div class="loading" id="code-loading"><div class="spinner"></div>正在编写代码...</div>
+      <div class="card" id="code-result-card" style="display:none">
+        <div class="result-header">
+          <div class="result-label">生成的代码</div>
+          <button class="btn btn-ghost copy-btn" onclick="copyResult('code-result')">复制代码</button>
+        </div>
+        <div class="result-box visible" id="code-result" style="font-family: monospace; font-size: 12px;"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="content" id="page-settings">
+      <div class="card">
+        <div class="card-title">Gemini API Key 配置</div>
+        <label>输入你的 Gemini API Key（只保存在本地浏览器，不会上传）</label>
+        <div class="api-input-row">
+          <input type="text" id="api-key-input" placeholder="AIzaSy..." style="margin-bottom:0">
+          <button class="btn" onclick="saveApiKey()">保存</button>
+        </div>
+        <p style="font-size:12px; color: var(--text3); margin-top: 10px; line-height: 1.7;">
+          获取免费 Key：前往 <a href="https://aistudio.google.com" target="_blank" style="color: var(--accent);">aistudio.google.com</a> → 左侧「Get API Key」→「Create API Key」<br>
+          用你订阅 Gemini 的 Google 账号登录即可，Key 以 AIzaSy 开头，完全免费使用。<br>
+          API Key 仅储存在你的浏览器本地，不经过任何第三方服务器。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">使用说明</div>
+        <p style="font-size: 13px; color: var(--text2); line-height: 1.9;">
+          1. 前往 aistudio.google.com，用 Google 账号登录<br>
+          2. 点击左侧「Get API Key」→「Create API Key」，复制 Key<br>
+          3. 粘贴到上方输入框，点击保存，即可使用所有功能<br>
+          4. 个人使用完全免费，每分钟有大量免费请求额度
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const pages = {
+  home: { title: '首页', desc: '选择一个工具开始' },
+  xiaohongshu: { title: '小红书文案', desc: '生成吸引眼球的笔记内容' },
+  wechat: { title: '公众号文章', desc: '生成专业的长篇文章' },
+  search: { title: '信息搜索摘要', desc: '快速生成主题摘要与分析' },
+  doc: { title: '文件处理', desc: '摘要、翻译、润色、提取' },
+  code: { title: '网页代码助手', desc: '描述需求，自动生成代码' },
+  settings: { title: 'API 设置', desc: '配置你的 Gemini API Key' },
+};
+
+function switchPage(name) {
+  document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(name)) el.classList.add('active');
+  });
+  document.getElementById('topbar-title').textContent = pages[name].title;
+  document.getElementById('topbar-desc').textContent = pages[name].desc;
+}
+
+function selectChip(el, group) {
+  document.querySelectorAll(`#${group}-chips .chip, [id$="${group}-chips"] .chip`).forEach(c => c.classList.remove('selected'));
+  // Find siblings
+  el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function getSelectedChip(groupId) {
+  const container = document.getElementById(groupId + '-chips');
+  if (!container) return '';
+  const selected = container.querySelector('.chip.selected');
+  return selected ? selected.textContent.trim() : '';
+}
+
+function getApiKey() {
+  return localStorage.getItem('gemini_api_key') || '';
+}
+
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) return alert('请输入 API Key');
+  localStorage.setItem('gemini_api_key', val);
+  updateStatus();
+  alert('✓ Gemini API Key 已保存');
+}
+
+function updateStatus() {
+  const key = getApiKey();
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  if (key) {
+    dot.style.background = 'var(--green)';
+    txt.textContent = 'Gemini 已连接';
+  } else {
+    dot.style.background = 'var(--text3)';
+    txt.textContent = '未配置 API Key';
+  }
+}
+
+function copyResult(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => btn.textContent = '复制', 1500);
+  });
+}
+
+async function callGemini(systemPrompt, userPrompt) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    alert('请先在「API 设置」页面配置你的 Gemini API Key');
+    switchPage('settings');
+    throw new Error('No API key');
+  }
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.8 }
+      })
+    }
+  );
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(err.error?.message || 'API 请求失败，请检查 Key 是否正确');
+  }
+  const data = await resp.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '生成失败，请重试';
+}
+
+function showLoading(id, show) {
+  document.getElementById(id).classList.toggle('visible', show);
+}
+
+function showResult(cardId, resultId, text) {
+  document.getElementById(cardId).style.display = 'block';
+  document.getElementById(resultId).textContent = text;
+}
+
+async function generateXHS() {
+  const topic = document.getElementById('xhs-topic').value.trim();
+  if (!topic) return alert('请输入主题或关键词');
+  const style = getSelectedChip('xhs-style');
+  const audience = getSelectedChip('xhs-audience');
+  showLoading('xhs-loading', true);
+  document.getElementById('xhs-result-card').style.display = 'none';
+  try {
+    const text = await callGemini(
+      '你是一位专业的小红书内容创作者，擅长写出高互动率的笔记。',
+      `请为我写一篇小红书笔记。\n主题：${topic}\n风格：${style}\n目标受众：${audience}\n\n要求：\n- 开头要吸引眼球，用表情符号增加活泼感\n- 内容真实、有共鸣感\n- 结尾加上5-8个相关话题标签（#xxx 格式）\n- 控制在300字以内`
+    );
+    showResult('xhs-result-card', 'xhs-result', text);
+  } catch(e) {
+    if (e.message !== 'No API key') alert('生成失败：' + e.message);
+    console.error(e);
+  } finally {
+    showLoading('xhs-loading', false);
+  }
+}
+
+async function generateWechat() {
+  const topic = document.getElementById('wechat-topic').value.trim();
+  if (!topic) return alert('请输入文章主题');
+  const style = getSelectedChip('wechat-style');
+  const length = getSelectedChip('wechat-length');
+  const extra = document.getElementById('wechat-extra').value.trim();
+  showLoading('wechat-loading', true);
+  document.getElementById('wechat-result-card').style.display = 'none';
+  try {
+    const text = await callGemini(
+      '你是一位专业的微信公众号内容创作者，文章有深度、有观点、有读者粘性。',
+      `请为我写一篇微信公众号文章。\n主题：${topic}\n风格：${style}\n字数：${length}\n补充要求：${extra || '无'}\n\n要求：\n- 有清晰的标题和结构\n- 语言流畅，有感染力\n- 结尾有明确的读者行动引导`
+    );
+    showResult('wechat-result-card', 'wechat-result', text);
+  } catch(e) {
+    if (e.message !== 'No API key') alert('生成失败：' + e.message);
+    console.error(e);
+  } finally {
+    showLoading('wechat-loading', false);
+  }
+}
+
+async function generateSearch() {
+  const topic = document.getElementById('search-topic').value.trim();
+  if (!topic) return alert('请输入查询主题');
+  const type = getSelectedChip('search-type');
+  showLoading('search-loading', true);
+  document.getElementById('search-result-card').style.display = 'none';
+  try {
+    const text = await callGemini(
+      '你是一位专业的信息分析师，善于整合信息、提炼要点，输出结构清晰的摘要。',
+      `请对以下主题进行「${type}」：\n\n主题：${topic}\n\n要求：\n- 内容准确、客观\n- 结构清晰，层次分明\n- 语言简洁，易于理解`
+    );
+    showResult('search-result-card', 'search-result', text);
+  } catch(e) {
+    if (e.message !== 'No API key') alert('生成失败：' + e.message);
+    console.error(e);
+  } finally {
+    showLoading('search-loading', false);
+  }
+}
+
+async function generateDoc() {
+  const text = document.getElementById('doc-text').value.trim();
+  if (!text) return alert('请粘贴需要处理的文字');
+  const type = getSelectedChip('doc-type');
+  showLoading('doc-loading', true);
+  document.getElementById('doc-result-card').style.display = 'none';
+  try {
+    const result = await callGemini(
+      '你是一位专业的文字编辑，擅长文本处理、翻译和写作优化。',
+      `请对以下文字进行「${type}」处理：\n\n${text}`
+    );
+    showResult('doc-result-card', 'doc-result', result);
+  } catch(e) {
+    if (e.message !== 'No API key') alert('生成失败：' + e.message);
+    console.error(e);
+  } finally {
+    showLoading('doc-loading', false);
+  }
+}
+
+async function generateCode() {
+  const desc = document.getElementById('code-desc').value.trim();
+  if (!desc) return alert('请描述你想要的网页或组件');
+  const type = getSelectedChip('code-type');
+  showLoading('code-loading', true);
+  document.getElementById('code-result-card').style.display = 'none';
+  try {
+    const result = await callGemini(
+      '你是一位专业的前端开发工程师，善于写出简洁、美观、可直接使用的网页代码。',
+      `请根据以下描述生成完整的网页代码，技术要求：${type}。\n\n需求描述：${desc}\n\n要求：\n- 输出完整、可直接运行的 HTML 代码\n- 代码简洁易懂，有适当注释\n- 视觉效果美观专业`
+    );
+    showResult('code-result-card', 'code-result', result);
+  } catch(e) {
+    if (e.message !== 'No API key') alert('生成失败：' + e.message);
+    console.error(e);
+  } finally {
+    showLoading('code-loading', false);
+  }
+}
+
+// Init
+updateStatus();
+const savedKey = getApiKey();
+if (savedKey) document.getElementById('api-key-input').value = savedKey;
+</script>
+</body>
+</html>
