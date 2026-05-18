@@ -486,7 +486,7 @@
         <textarea id="wechat-extra" placeholder="例如：需要包含案例、结尾呼吁关注..." rows="2"></textarea>
         <button class="btn" onclick="generateWechat()">✦ 生成公众号文章</button>
       </div>
-      <div class="loading" id="wechat-loading"><div class="spinner"></div>正在撰写文章，请稍候...</div>
+      <div class="loading" id="wechat-loading"><div class="spinner"></div>正在联网搜索并撰写文章，请稍候（约30秒）...</div>
       <div class="card" id="wechat-result-card" style="display:none">
         <div class="result-header">
           <div class="result-label">生成结果</div>
@@ -511,7 +511,7 @@
         </div>
         <button class="btn" onclick="generateSearch()">✦ 开始查询摘要</button>
       </div>
-      <div class="loading" id="search-loading"><div class="spinner"></div>正在分析整理，请稍候...</div>
+      <div class="loading" id="search-loading"><div class="spinner"></div>正在联网搜索并整理，请稍候（约30秒）...</div>
       <div class="card" id="search-result-card" style="display:none">
         <div class="result-header">
           <div class="result-label">摘要结果</div>
@@ -605,8 +605,8 @@
 const pages = {
   home: { title: '首页', desc: '选择一个工具开始' },
   xiaohongshu: { title: '小红书文案', desc: '生成吸引眼球的笔记内容' },
-  wechat: { title: '公众号文章', desc: '生成专业的长篇文章' },
-  search: { title: '信息搜索摘要', desc: '快速生成主题摘要与分析' },
+  wechat: { title: '公众号文章', desc: '🌐 联网搜索 · 生成专业的长篇文章' },
+  search: { title: '信息搜索摘要', desc: '🌐 联网搜索 · 快速生成主题摘要与分析' },
   doc: { title: '文件处理', desc: '摘要、翻译、润色、提取' },
   code: { title: '网页代码助手', desc: '描述需求，自动生成代码' },
   settings: { title: 'API 设置', desc: '配置你的 Gemini API Key' },
@@ -671,23 +671,27 @@ function copyResult(id) {
   });
 }
 
-async function callGemini(systemPrompt, userPrompt) {
+async function callGemini(systemPrompt, userPrompt, useSearch = false) {
   const apiKey = getApiKey();
   if (!apiKey) {
     alert('请先在「API 设置」页面配置你的 Gemini API Key');
     switchPage('settings');
     throw new Error('No API key');
   }
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.8 }
+  };
+  if (useSearch) {
+    body.tools = [{ google_search: {} }];
+  }
   const resp = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.8 }
-      })
+      body: JSON.stringify(body)
     }
   );
   if (!resp.ok) {
@@ -695,7 +699,10 @@ async function callGemini(systemPrompt, userPrompt) {
     throw new Error(err.error?.message || 'API 请求失败，请检查 Key 是否正确');
   }
   const data = await resp.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '生成失败，请重试';
+  // 提取所有文本 parts（联网搜索时可能有多个）
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const text = parts.filter(p => p.text).map(p => p.text).join('');
+  return text || '生成失败，请重试';
 }
 
 function showLoading(id, show) {
@@ -738,9 +745,10 @@ async function generateWechat() {
   document.getElementById('wechat-result-card').style.display = 'none';
   try {
     const text = await callGemini(
-      '你是一位专业的微信公众号内容创作者，文章有深度、有观点、有读者粘性。',
+      '你是一位专业的微信公众号内容创作者，文章有深度、有观点、有读者粘性。如果需要最新资讯，请主动搜索。',
       `请为我写一篇微信公众号文章。\n主题：${topic}\n风格：${style}\n字数：${length}\n补充要求：${extra || '无'}\n\n要求：\n- 有清晰的标题和结构\n- 语言流畅，有感染力\n- 结尾有明确的读者行动引导`
-    );
+    ,
+      true);
     showResult('wechat-result-card', 'wechat-result', text);
   } catch(e) {
     if (e.message !== 'No API key') alert('生成失败：' + e.message);
@@ -760,7 +768,8 @@ async function generateSearch() {
     const text = await callGemini(
       '你是一位专业的信息分析师，善于整合信息、提炼要点，输出结构清晰的摘要。',
       `请对以下主题进行「${type}」：\n\n主题：${topic}\n\n要求：\n- 内容准确、客观\n- 结构清晰，层次分明\n- 语言简洁，易于理解`
-    );
+    ,
+      true);
     showResult('search-result-card', 'search-result', text);
   } catch(e) {
     if (e.message !== 'No API key') alert('生成失败：' + e.message);
